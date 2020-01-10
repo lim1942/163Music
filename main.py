@@ -2,6 +2,7 @@ import os
 import re
 import json
 import traceback
+
 import requests
 from concurrent.futures import ThreadPoolExecutor,as_completed
 
@@ -43,6 +44,13 @@ def get_song_by_sid(sid,dir_name,name=None):
     try:
         print(f"start {sid} -- {name}")
         name = name.replace(os.sep,'-')
+        if not os.path.exists(dir_name):os.mkdir(dir_name)
+        song_path = os.path.join(dir_name,(name or sid)+'.mp3')
+        # 已经存在不再下载
+        if os.path.exists(song_path):
+            print(f'{sid} -- {song_path} already download !!!')
+            return sid
+        # 获取音乐的下载地址
         url = 'https://music.163.com/weapi/song/enhance/player/url/v1?csrf_token='
         info = {"ids": f"[{sid}]", "level": "standard", "encodeType": "aac", "csrf_token": ""}
         data = get_post_data(info)
@@ -50,10 +58,10 @@ def get_song_by_sid(sid,dir_name,name=None):
         song_json = song_json_resp.json()
         song_url = song_json['data'][0]['url']
         assert 'http' in song_url, "this song need vip !!!"
+        # 进行音乐下载
         song_resp = requests.get(song_url,headers=HEADERS)
-        if not os.path.exists(dir_name):os.mkdir(dir_name)
-        song_path = os.path.join(dir_name,(name or sid)+'.mp3')
         with open(song_path,'wb') as f:f.write(song_resp.content)
+        # 下载音乐的歌词
         download_lyric(sid, dir_name, name)
         print(f'{sid} -- {song_path} finish !!!')
         return sid
@@ -63,18 +71,19 @@ def get_song_by_sid(sid,dir_name,name=None):
 
 def download_playlist(url,multi=0):
     """采集网易云歌单，输入歌单地址"""
+    # 采集歌单数据
     resp = requests.get(url,headers=HEADERS)
     playlist_name = re.search("<title>(.*?) - 歌单 - 网易云音乐",resp.text).groups()[0].strip().replace(os.sep,'-')
     songs = re.findall('<a href="/song\?id=(\d+?)">(.+?)</a>',resp.text)
     songs = dict(songs)
     print(f"所有的歌曲如下 {len(songs)} 首...\n")
     print(list(songs.values()))
-    # 单线程采集
+    # 单线程采集歌曲
     if not multi:
         for sid,name in songs.items():
             key = get_song_by_sid(sid,playlist_name,name)
             if key: del songs[key]
-    # 并发采集
+    # 多线程采集歌曲
     else:
         pool = ThreadPoolExecutor(multi)
         tasks = [pool.submit(get_song_by_sid,sid,playlist_name,name) for sid,name in songs.items()]
@@ -86,7 +95,8 @@ def download_playlist(url,multi=0):
 
 
 if __name__ == "__main__":
+    # 单首歌曲按id下载
     # get_song_by_sid('436514312')
     # 歌单地址：
-    url = "https://music.163.com/playlist?id=27270627"
+    url = "https://music.163.com/playlist?id=27545272"
     download_playlist( url ,multi=6)
