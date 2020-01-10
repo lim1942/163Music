@@ -131,3 +131,5 @@ dmypy.json
 data/
 songs/
 .~*
+*.mp3
+*.lrc
