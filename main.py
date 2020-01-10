@@ -69,4 +69,4 @@ def download_playlist(url,multi=0):
 
 if __name__ == "__main__":
     # get_song_by_sid('436514312')
-    download_playlist('https://music.163.com/playlist?id=27545272',multi=6)
+    download_playlist("https://music.163.com/playlist?id=27545272"  ,multi=6)
