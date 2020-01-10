@@ -43,9 +43,9 @@ def get_song_by_sid(sid,dir_name,name=None):
     """根据一首歌的id采集"""
     try:
         print(f"start {sid} -- {name}")
-        name = name.replace(os.sep,'-')
+        name = (name or sid).replace(os.sep,'-')
         if not os.path.exists(dir_name):os.mkdir(dir_name)
-        song_path = os.path.join(dir_name,(name or sid)+'.mp3')
+        song_path = os.path.join(dir_name,name+'.mp3')
         # 已经存在不再下载
         if os.path.exists(song_path):
             print(f'{sid} -- {song_path} already download !!!')
