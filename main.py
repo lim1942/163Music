@@ -42,13 +42,13 @@ def download_lyric(sid,dir_name,name):
 def get_song_by_sid(sid,dir_name,name=None):
     """根据一首歌的id采集"""
     try:
-        print(f"start {sid} -- {name}")
+        print(f">> start `{sid}` ---- `{name}`")
         name = (name or sid).replace(os.sep,'-')
         if not os.path.exists(dir_name):os.mkdir(dir_name)
         song_path = os.path.join(dir_name,name+'.mp3')
         # 已经存在不再下载
         if os.path.exists(song_path):
-            print(f'{sid} -- {song_path} already download !!!')
+            print(f'<< finish `{sid}` ---- `{song_path}` already download !!!')
             return sid
         # 获取音乐的下载地址
         url = 'https://music.163.com/weapi/song/enhance/player/url/v1?csrf_token='
@@ -57,16 +57,16 @@ def get_song_by_sid(sid,dir_name,name=None):
         song_json_resp = requests.post(url,data=data,headers=HEADERS)
         song_json = song_json_resp.json()
         song_url = song_json['data'][0]['url']
-        assert 'http' in song_url, "this song need vip !!!"
+        assert song_url, "This song can not play ,download error!!!"
         # 进行音乐下载
         song_resp = requests.get(song_url,headers=HEADERS)
         with open(song_path,'wb') as f:f.write(song_resp.content)
         # 下载音乐的歌词
         download_lyric(sid, dir_name, name)
-        print(f'{sid} -- {song_path} finish !!!')
+        print(f'<< finish `{sid}` ---- `{song_path}` !!!')
         return sid
     except:
-        print(f"{sid} -- {name} : {traceback.format_exc()}")
+        print(f"** Error `{sid}` ---- `{name}` : {traceback.format_exc()}")
 
 
 def download_playlist(url,multi=0):
@@ -77,7 +77,7 @@ def download_playlist(url,multi=0):
     songs = re.findall('<a href="/song\?id=(\d+?)">(.+?)</a>',resp.text)
     songs = dict(songs)
     print(f"所有的歌曲如下 {len(songs)} 首...\n")
-    print(list(songs.values()))
+    print(list(songs.values()),'\n')
     # 单线程采集歌曲
     if not multi:
         for sid,name in songs.items():
