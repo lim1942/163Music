@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import traceback
 import requests
 from concurrent.futures import ThreadPoolExecutor,as_completed
 
@@ -30,19 +31,25 @@ def get_post_data(info):
 
 def get_song_by_sid(sid,name=None):
     """根据一首歌的id采集"""
-    print(f"start {sid} -- {name}")
-    url = 'https://music.163.com/weapi/song/enhance/player/url/v1?csrf_token='
-    info = {"ids": f"[{sid}]", "level": "standard", "encodeType": "aac", "csrf_token": ""}
-    data = get_post_data(info)
-    song_json_resp = requests.post(url,data=data,headers=HEADERS)
-    song_json = song_json_resp.json()
-    song_url = song_json['data'][0]['url']
-    song_resp = requests.get(song_url,headers=HEADERS)
-    if not os.path.exists('songs'):os.mkdir('songs')
-    song_path = os.path.join('songs',(name or sid)+'.mp3')
-    with open(song_path,'wb') as f:f.write(song_resp.content)
-    print(f'{sid} -- {song_path} finish !!!')
-    return sid
+    try:
+        print(f"start {sid} -- {name}")
+        name = name.replace(os.sep,'-')
+        url = 'https://music.163.com/weapi/song/enhance/player/url/v1?csrf_token='
+        info = {"ids": f"[{sid}]", "level": "standard", "encodeType": "aac", "csrf_token": ""}
+        data = get_post_data(info)
+        song_json_resp = requests.post(url,data=data,headers=HEADERS)
+        song_json = song_json_resp.json()
+        song_url = song_json['data'][0]['url']
+        assert 'http' in song_url, "this song need vip !!!"
+        song_resp = requests.get(song_url,headers=HEADERS)
+        if not os.path.exists('songs'):os.mkdir('songs')
+        song_path = os.path.join('songs',(name or sid)+'.mp3')
+        with open(song_path,'wb') as f:f.write(song_resp.content)
+        print(f'{sid} -- {song_path} finish !!!')
+        return sid
+    except:
+        print(f"{sid} -- {name} : {traceback.format_exc()}")
+
 
 def download_playlist(url,multi=0):
     """采集网易云歌单，输入歌单地址"""
@@ -51,19 +58,19 @@ def download_playlist(url,multi=0):
     songs = dict(songs)
     print(f"所有的歌曲如下 {len(songs)} 首...\n")
     print(list(songs.values()))
+    # 单线程采集
     if not multi:
-        # 单线程采集
         for sid,name in songs.items():
-            try: del songs[get_song_by_sid(sid,name)]
-            except Exception as e:print(e)
+            key = get_song_by_sid(sid,name)
+            if key: del songs[key]
+    # 并发采集
     else:
-        # 并发采集
         pool = ThreadPoolExecutor(multi)
         tasks = [pool.submit(get_song_by_sid,sid,name) for sid,name in songs.items()]
-        for res in as_completed(tasks):
-            key = res._result
+        for future in as_completed(tasks):
+            key = future._result
             if key: del songs[key]
-    print(f"没完成下载的歌曲如下 {len(songs)} 首...\n")
+    print(f"\n没完成下载的歌曲如下 {len(songs)} 首...")
     print(list(songs.values()))
 
 
